@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot
+  name="cam_auto_adjusting" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="robotic_arm.xacro"/>
+  <xacro:include filename="ros2_control_.xacro"/>
+  <xacro:include filename="camera.xacro"/>
+</robot>

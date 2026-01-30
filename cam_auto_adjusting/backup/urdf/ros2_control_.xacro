@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <ros2_control name="GazeboSystem" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+
+    <joint name="Slider_Z_01">
+      <command_interface name="position">
+      <param name="min">-0.05</param>
+      <param name="max">0.35</param>
+    </command_interface>
+      <state_interface name="position"/>
+    </joint>
+
+
+    <joint name="Slider_R_01">
+      <command_interface name="position">
+        <param name="min">-0.12</param>
+        <param name="max">0.06</param>
+      </command_interface>
+      <state_interface name="position"/>
+    </joint>
+
+
+    <joint name="Tilt_01">
+      <command_interface name="position">
+      <param name="min">-1.57</param>
+      <param name="max">1.57</param>
+    </command_interface>
+      <state_interface name="position"/>
+    </joint>
+
+  </ros2_control>
+
+  <gazebo>
+    <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find cam_auto_adjusting)/config/robot_controllers.yaml</parameters>
+    </plugin>
+  </gazebo>
+
+</robot>
