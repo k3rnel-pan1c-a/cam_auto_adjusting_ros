@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot
   name="cam_auto_adjusting" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!-- Argument to control which ros2_control to use -->
+  <xacro:arg name="use_gazebo_ros2_control" default="true"/>
+  
   <xacro:include filename="robotic_arm.xacro"/>
-  <!-- ros2_control_.xacro is excluded - use MoveIt config's ros2_control instead -->
+  
+  <!-- Conditionally include ros2_control for Gazebo -->
+  <xacro:if value="$(arg use_gazebo_ros2_control)">
+    <xacro:include filename="ros2_control_.xacro"/>
+  </xacro:if>
+  
   <xacro:include filename="camera.xacro"/>
 </robot>

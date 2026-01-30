@@ -1,13 +1,11 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="cam_auto_adjusting">
     <xacro:arg name="initial_positions_file" default="initial_positions.yaml" />
+    <xacro:arg name="use_gazebo_ros2_control" default="false"/>
 
-    <!-- Import cam_auto_adjusting urdf file -->
     <xacro:include filename="$(find cam_auto_adjusting)/urdf/robot.urdf.xacro" />
 
-    <!-- Import control_xacro -->
     <xacro:include filename="cam_auto_adjusting.ros2_control.xacro" />
-
 
     <xacro:cam_auto_adjusting_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>
 
