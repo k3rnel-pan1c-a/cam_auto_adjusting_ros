@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: cam_auto_adjusting
+    relative_path: urdf/robot.urdf.xacro
+  srdf:
+    relative_path: config/cam_auto_adjusting.srdf
+  package_settings:
+    author_name: todo
+    author_email: todo@todo.com
+    generated_timestamp: 1769811241
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity

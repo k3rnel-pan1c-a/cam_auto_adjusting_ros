@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This does not replace URDF, and is not an extension of URDF.
+    This is a format for representing semantic information about the robot structure.
+    A URDF file must exist for this robot as well, where the joints and the links that are referenced are defined
+-->
+<robot name="cam_auto_adjusting">
+    <!--GROUPS: Representation of a set of joints and links. This can be useful for specifying DOF to plan for, defining arms, end effectors, etc-->
+    <!--LINKS: When a link is specified, the parent joint of that link (if it exists) is automatically included-->
+    <!--JOINTS: When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
+    <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
+    <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
+    <group name="arm_group">
+        <joint name="virtual_joint"/>
+        <joint name="Slider_Z_01"/>
+        <joint name="Slider_R_01"/>
+        <joint name="Tilt_01"/>
+    </group>
+    <group name="camera_group">
+        <link name="Camera"/>
+    </group>
+    <!--GROUP STATES: Purpose: Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
+    <group_state name="home_pose" group="arm_group">
+        <joint name="Slider_R_01" value="-0.12"/>
+        <joint name="Slider_Z_01" value="0"/>
+        <joint name="Tilt_01" value="-0.785"/>
+    </group_state>
+    <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
+    <end_effector name="camera" parent_link="base_link" group="camera_group" parent_group="arm_group"/>
+    <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
+    <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="base_link"/>
+    <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
+    <disable_collisions link1="Camera" link2="Endeffector" reason="Adjacent"/>
+    <disable_collisions link1="Camera" link2="LP" reason="Never"/>
+    <disable_collisions link1="Camera" link2="Rotary" reason="Never"/>
+    <disable_collisions link1="Camera" link2="Slider_Z" reason="Never"/>
+    <disable_collisions link1="Camera" link2="base_link" reason="Never"/>
+    <disable_collisions link1="Endeffector" link2="LP" reason="Adjacent"/>
+    <disable_collisions link1="Endeffector" link2="Rotary" reason="Never"/>
+    <disable_collisions link1="Endeffector" link2="Slider_R" reason="Adjacent"/>
+    <disable_collisions link1="Endeffector" link2="base_link" reason="Never"/>
+    <disable_collisions link1="LP" link2="Rotary" reason="Never"/>
+    <disable_collisions link1="LP" link2="Slider_R" reason="Never"/>
+    <disable_collisions link1="LP" link2="Slider_Z" reason="Never"/>
+    <disable_collisions link1="LP" link2="base_link" reason="Never"/>
+    <disable_collisions link1="Object" link2="Rotary" reason="Adjacent"/>
+    <disable_collisions link1="Object" link2="Slider_Z" reason="Never"/>
+    <disable_collisions link1="Object" link2="base_link" reason="Default"/>
+    <disable_collisions link1="Rotary" link2="Slider_R" reason="Never"/>
+    <disable_collisions link1="Rotary" link2="Slider_Z" reason="Never"/>
+    <disable_collisions link1="Rotary" link2="base_link" reason="Adjacent"/>
+    <disable_collisions link1="Slider_R" link2="Slider_Z" reason="Adjacent"/>
+    <disable_collisions link1="Slider_R" link2="base_link" reason="Never"/>
+    <disable_collisions link1="Slider_Z" link2="base_link" reason="Adjacent"/>
+</robot>
