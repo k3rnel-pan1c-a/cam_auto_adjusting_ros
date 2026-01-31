@@ -11,8 +11,10 @@ def generate_launch_description():
     urdf_path = os.path.join(package_path, 'urdf', 'robot.urdf.xacro')
     ros_gz_bridge_config_path = os.path.join(package_path, 'config', 'ros_gz_bridge.yaml')
     ros2_control_config_path = os.path.join(package_path, 'config', 'robot_controllers.yaml')
-    
+
     robot_description = ParameterValue(Command(['xacro ', urdf_path]), value_type=str)
+    switch_timeout = 10   
+
 
     robot_state_publisher_node = Node(
         package='robot_state_publisher',
@@ -49,13 +51,13 @@ def generate_launch_description():
     position_controller = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['forward_position_controller']
+        arguments=['forward_position_controller', '--switch-timeout', str(switch_timeout)]
     )
 
     joint_state_broadcaster = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=['joint_state_broadcaster']
+        arguments=['joint_state_broadcaster', '--switch-timeout', str(switch_timeout)]
     )
 
     return LaunchDescription([
