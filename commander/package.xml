@@ -11,6 +11,8 @@
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
   <depend>moveit_ros_planning_interface</depend>
   <depend>example_interfaces</depend>
   <depend>my_robot_interfaces</depend>

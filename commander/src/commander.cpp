@@ -4,13 +4,22 @@
 #include <my_robot_interfaces/srv/get_current_pose.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <cv_bridge/cv_bridge.h>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 
+// YOLOs-CPP inference engine
+#include <yolos/yolos.hpp>
+
+#include <opencv2/opencv.hpp>
+
 #include <cmath>
 #include <atomic>
 #include <memory>
+#include <mutex>
+#include <fstream>
 
 using MoveGroupInterface = moveit::planning_interface::MoveGroupInterface;
 
@@ -19,6 +28,7 @@ using GetCurrentPose = my_robot_interfaces::srv::GetCurrentPose;
 
 using String = std_msgs::msg::String;
 using LaserScan = sensor_msgs::msg::LaserScan;
+using Image = sensor_msgs::msg::Image;
 
 using namespace std::placeholders;
 
@@ -47,6 +57,13 @@ public:
             "get_current_pose",
             std::bind(&Commander::getCurrentPoseService, this, _1, _2));
 
+        initYoloDetector();
+
+        image_sub_ = main_node_->create_subscription<Image>(
+            "camera/image_raw", 10,
+            std::bind(&Commander::imageCallback, this, _1));
+
+        RCLCPP_INFO(main_node_->get_logger(), "Commander initialized with YOLO detector");
     }
 
     bool goToNamedTarget(const std::string &name) {
@@ -113,7 +130,93 @@ public:
     }
 
 
+    std::vector<yolos::Detection> getLatestDetections() {
+        std::lock_guard<std::mutex> lock(detections_mutex_);
+        return latest_detections_;
+    }
+
+    std::string getClassName(int classId) const {
+        if (yolo_detector_ && classId >= 0 && 
+            static_cast<size_t>(classId) < yolo_detector_->getClassNames().size()) {
+            return yolo_detector_->getClassNames()[classId];
+        }
+        return "unknown";
+    }
+
 private:
+
+    void initYoloDetector() {
+        std::string model_path = main_node_->declare_parameter<std::string>(
+            "yolo_model_path", "/home/cam_auto_adjusting_ws/src/cam_auto_adjusting/models/best1_with_corner.onnx");
+        int num_classes = main_node_->declare_parameter<int>("yolo_num_classes", 7);
+        bool use_gpu = main_node_->declare_parameter<bool>("yolo_use_gpu", false);
+        
+        conf_threshold_ = main_node_->declare_parameter<double>("yolo_conf_threshold", 0.4);
+        iou_threshold_ = main_node_->declare_parameter<double>("yolo_iou_threshold", 0.45);
+
+        std::string labels_path = "/tmp/yolo_labels.names";
+
+        try {
+            yolo_detector_ = std::make_unique<yolos::YOLODetector>(
+                model_path, labels_path, use_gpu);
+            
+            RCLCPP_INFO(main_node_->get_logger(), 
+                "YOLO detector initialized: model=%s, num_classes=%d, GPU=%s",
+                model_path.c_str(), num_classes, use_gpu ? "true" : "false");
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(main_node_->get_logger(), 
+                "Failed to initialize YOLO detector: %s", e.what());
+        }
+    }
+
+    void imageCallback(const Image::SharedPtr msg) {
+        if (!yolo_detector_) {
+            return;
+        }
+
+        try {
+            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
+            cv::Mat frame = cv_ptr->image;
+
+            if (frame.empty()) {
+                RCLCPP_WARN(main_node_->get_logger(), "Received empty image");
+                return;
+            }
+
+            auto detections = yolo_detector_->detect(
+                frame, 
+                static_cast<float>(conf_threshold_), 
+                static_cast<float>(iou_threshold_)
+            );
+
+            {
+                std::lock_guard<std::mutex> lock(detections_mutex_);
+                latest_detections_ = detections;
+            }
+
+            if (!detections.empty()) {
+                RCLCPP_INFO(main_node_->get_logger(), 
+                    "YOLO detected %zu objects", detections.size());
+                
+                for (const auto& det : detections) {
+                    std::string class_name = getClassName(det.classId);
+                    RCLCPP_DEBUG(main_node_->get_logger(),
+                        "  - %s (%.2f%%) at [%d, %d, %d, %d]",
+                        class_name.c_str(),
+                        det.conf * 100.0f,
+                        det.box.x, det.box.y, 
+                        det.box.width, det.box.height);
+                }
+            }
+
+        } catch (const cv_bridge::Exception& e) {
+            RCLCPP_ERROR(main_node_->get_logger(), 
+                "cv_bridge exception: %s", e.what());
+        } catch (const std::exception& e) {
+            RCLCPP_ERROR(main_node_->get_logger(), 
+                "YOLO inference exception: %s", e.what());
+        }
+    }
 
     bool planAndExecute(const std::shared_ptr<MoveGroupInterface>& interface) {
         MoveGroupInterface::Plan plan;
@@ -175,8 +278,18 @@ private:
     std::shared_ptr<MoveGroupInterface> arm_group_;
 
     rclcpp::Subscription<String>::SharedPtr go_to_named_target_sub_;
+    rclcpp::Subscription<Image>::SharedPtr image_sub_;
 
     rclcpp::Service<GetCurrentPose>::SharedPtr get_current_pose_service_;
+
+    // YOLO detector
+    std::unique_ptr<yolos::YOLODetector> yolo_detector_;
+    double conf_threshold_{0.4};
+    double iou_threshold_{0.45};
+
+    // Latest detections storage (thread-safe access)
+    std::vector<yolos::Detection> latest_detections_;
+    std::mutex detections_mutex_;
 };
 
 
