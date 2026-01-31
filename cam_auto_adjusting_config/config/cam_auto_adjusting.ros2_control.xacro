@@ -5,38 +5,43 @@
 
         <ros2_control name="${name}" type="system">
             <hardware>
-                <!-- By default, set up controllers for simulation. This won't work on real hardware -->
-                <plugin>mock_components/GenericSystem</plugin>
+                <plugin>gz_ros2_control/GazeboSimSystem</plugin>
             </hardware>
             <joint name="Slider_Z_01">
                 <command_interface name="position"/>
                 <state_interface name="position">
-                  <param name="initial_value">${initial_positions['Slider_Z_01']}</param>
+                    <param name="initial_value">${initial_positions['Slider_Z_01']}</param>
                 </state_interface>
                 <state_interface name="velocity"/>
             </joint>
             <joint name="Slider_R_01">
                 <command_interface name="position"/>
                 <state_interface name="position">
-                  <param name="initial_value">${initial_positions['Slider_R_01']}</param>
+                    <param name="initial_value">${initial_positions['Slider_R_01']}</param>
                 </state_interface>
                 <state_interface name="velocity"/>
             </joint>
             <joint name="Tilt_01">
                 <command_interface name="position"/>
                 <state_interface name="position">
-                  <param name="initial_value">${initial_positions['Tilt_01']}</param>
+                    <param name="initial_value">${initial_positions['Tilt_01']}</param>
                 </state_interface>
                 <state_interface name="velocity"/>
             </joint>
             <joint name="Rotary_01">
                 <command_interface name="position"/>
                 <state_interface name="position">
-                  <param name="initial_value">${initial_positions['Rotary_01']}</param>
+                    <param name="initial_value">${initial_positions['Rotary_01']}</param>
                 </state_interface>
                 <state_interface name="velocity"/>
             </joint>
 
         </ros2_control>
+
+        <gazebo>
+            <plugin filename="libign_ros2_control-system.so" name="ign_ros2_control::IgnitionROS2ControlPlugin">
+                <parameters>$(find cam_auto_adjusting_config)/config/ros2_controllers.yaml</parameters>
+            </plugin>
+        </gazebo>
     </xacro:macro>
 </robot>
