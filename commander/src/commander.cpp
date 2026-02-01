@@ -1,3 +1,5 @@
+#include <opencv2/core/types.hpp>
+#include <opencv2/highgui.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <my_robot_interfaces/msg/pose_command.hpp>
@@ -10,15 +12,13 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 
-// YOLOs-CPP inference engine
 #include <yolos/yolos.hpp>
-
 #include <opencv2/opencv.hpp>
 
+#include <vector>
 #include <cmath>
 #include <atomic>
 #include <memory>
-#include <mutex>
 #include <fstream>
 
 using MoveGroupInterface = moveit::planning_interface::MoveGroupInterface;
@@ -32,6 +32,15 @@ using Image = sensor_msgs::msg::Image;
 
 using namespace std::placeholders;
 
+enum Classes {
+  cone,
+  nose,
+  shoulder,
+  gauge,
+  rear,
+  corner,
+  lost
+};
 
 class Commander {
 public:
@@ -59,9 +68,17 @@ public:
 
         initYoloDetector();
 
+        // Create mutually exclusive callback group for YOLO processing
+        yolo_callback_group_ = main_node_->create_callback_group(
+            rclcpp::CallbackGroupType::MutuallyExclusive);
+        
+        auto sub_options = rclcpp::SubscriptionOptions();
+        sub_options.callback_group = yolo_callback_group_;
+
         image_sub_ = main_node_->create_subscription<Image>(
             "camera/image_raw", 10,
-            std::bind(&Commander::imageCallback, this, _1));
+            std::bind(&Commander::imageCallback, this, _1),
+            sub_options);
 
         RCLCPP_INFO(main_node_->get_logger(), "Commander initialized with YOLO detector");
     }
@@ -129,20 +146,6 @@ public:
         return goToPoseTarget(x, y, z, roll, pitch, yaw, cartesian_path);
     }
 
-
-    std::vector<yolos::Detection> getLatestDetections() {
-        std::lock_guard<std::mutex> lock(detections_mutex_);
-        return latest_detections_;
-    }
-
-    std::string getClassName(int classId) const {
-        if (yolo_detector_ && classId >= 0 && 
-            static_cast<size_t>(classId) < yolo_detector_->getClassNames().size()) {
-            return yolo_detector_->getClassNames()[classId];
-        }
-        return "unknown";
-    }
-
 private:
 
     void initYoloDetector() {
@@ -160,6 +163,8 @@ private:
             yolo_detector_ = std::make_unique<yolos::YOLODetector>(
                 model_path, labels_path, use_gpu);
             
+            class_names_ = yolo_detector_->getClassNames();
+
             RCLCPP_INFO(main_node_->get_logger(), 
                 "YOLO detector initialized: model=%s, num_classes=%d, GPU=%s",
                 model_path.c_str(), num_classes, use_gpu ? "true" : "false");
@@ -175,6 +180,7 @@ private:
         }
 
         try {
+        
             cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, "bgr8");
             cv::Mat frame = cv_ptr->image;
 
@@ -189,24 +195,28 @@ private:
                 static_cast<float>(iou_threshold_)
             );
 
-            {
-                std::lock_guard<std::mutex> lock(detections_mutex_);
-                latest_detections_ = detections;
-            }
 
             if (!detections.empty()) {
                 RCLCPP_INFO(main_node_->get_logger(), 
                     "YOLO detected %zu objects", detections.size());
                 
-                for (const auto& det : detections) {
-                    std::string class_name = getClassName(det.classId);
-                    RCLCPP_DEBUG(main_node_->get_logger(),
-                        "  - %s (%.2f%%) at [%d, %d, %d, %d]",
-                        class_name.c_str(),
-                        det.conf * 100.0f,
-                        det.box.x, det.box.y, 
-                        det.box.width, det.box.height);
+                yolo_detector_->drawDetections(frame, detections);
+
+                rear_detected_ = false;
+
+                for (auto detection: detections){
+                    if (detection.classId == Classes::rear || detection.classId == Classes::corner){
+                        rear_detected_ = true;
+                    }
                 }
+                
+                if (!rear_detected_){
+                    RCLCPP_ERROR(main_node_->get_logger(), "Could not detect rear or corner cutters...");
+
+                }
+
+                cv::imshow("detections", frame);
+                cv::waitKey(1);
             }
 
         } catch (const cv_bridge::Exception& e) {
@@ -282,16 +292,15 @@ private:
 
     rclcpp::Service<GetCurrentPose>::SharedPtr get_current_pose_service_;
 
-    // YOLO detector
+    rclcpp::CallbackGroup::SharedPtr yolo_callback_group_;
+
     std::unique_ptr<yolos::YOLODetector> yolo_detector_;
     double conf_threshold_{0.4};
     double iou_threshold_{0.45};
 
-    // Latest detections storage (thread-safe access)
-    std::vector<yolos::Detection> latest_detections_;
-    std::mutex detections_mutex_;
+    std::vector<std::string> class_names_;
+    bool rear_detected_;
 };
-
 
 int main(int argc, char *argv[])
 {
