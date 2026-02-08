@@ -1,6 +1,7 @@
 #include <opencv2/core/types.hpp>
 #include <opencv2/highgui.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <moveit/move_group_interface/move_group_interface.hpp>
 #include <my_robot_interfaces/msg/pose_command.hpp>
 #include <my_robot_interfaces/srv/get_current_pose.hpp>
@@ -99,7 +100,7 @@ public:
         // Max radial position from URDF joint limits: lower=-0.12, upper=0.06
         max_radial_position_ = 0.06;
         
-        centering_enabled_ = true;
+        centering_enabled_ = false;
         
         RCLCPP_INFO(main_node_->get_logger(), 
             "Centering params: z_tol=%.1f, z_step=%.4f, radial_step=%.4f, max_radial=%.3f, target_ratio=%.2f",
@@ -188,12 +189,13 @@ private:
 
     void initYoloDetector() {
         std::string model_path = main_node_->declare_parameter<std::string>(
-            "yolo_model_path", "/home/cam_auto_adjusting_ws/src/cam_auto_adjusting/models/best1_with_corner.onnx");
+            "yolo_model_path", ament_index_cpp::get_package_share_directory("cam_auto_adjusting") + "/models" + "/yolo26m_cam_one.onnx");
         int num_classes = main_node_->declare_parameter<int>("yolo_num_classes", 7);
         bool use_gpu = main_node_->declare_parameter<bool>("yolo_use_gpu", false);
         
-        conf_threshold_ = main_node_->declare_parameter<double>("yolo_conf_threshold", 0.4);
-        iou_threshold_ = main_node_->declare_parameter<double>("yolo_iou_threshold", 0.45);
+        conf_threshold_ = main_node_->declare_parameter<double>("yolo_conf_threshold", 0.05);
+        iou_threshold_ = main_node_->declare_parameter<double>("yolo_iou_threshold", 0.05);
+    
 
         std::string labels_path = "/tmp/yolo_labels.names";
 
@@ -204,8 +206,8 @@ private:
             class_names_ = yolo_detector_->getClassNames();
 
             RCLCPP_INFO(main_node_->get_logger(), 
-                "YOLO detector initialized: model=%s, num_classes=%d, GPU=%s",
-                model_path.c_str(), num_classes, use_gpu ? "true" : "false");
+                "YOLO detector initialized: model=%s, num_classes=%d, GPU=%s, conf_threshold: %.2f, iou_threshold: %.2f",
+                model_path.c_str(), num_classes, use_gpu ? "true" : "false", conf_threshold_, iou_threshold_);
         } catch (const std::exception& e) {
             RCLCPP_ERROR(main_node_->get_logger(), 
                 "Failed to initialize YOLO detector: %s", e.what());
@@ -340,7 +342,7 @@ private:
                     // Display info
                     putText(frame, "Ratio: " + std::to_string(drill_bit_ratio * 100).substr(0, 5) + "%", cv::Point(10, 20));
                     putText(frame, "Diff: " + std::to_string(diff).substr(0, 6), cv::Point(10, 40));
-                    putText(frame, "Radial: " + std::to_string(current_radial).substr(0, 6) + "/" + std::to_string(max_radial_position_).substr(0, 5), cv::Point(10, 60));
+                    // putText(frame, "Radial: " + std::to_string(current_radial).substr(0, 6) + "/" + std::to_string(max_radial_position_).substr(0, 5), cv::Point(10, 60));
 
                     if (centering_enabled_) {
                         // Centering logic
@@ -384,7 +386,7 @@ private:
                             }
                         }
                     } else {
-                        putText(frame, "Centering DISABLED", cv::Point(frame_width / 2 - 80, 100));
+                        // putText(frame, "Centering DISABLED", cv::Point(frame_width / 2 - 80, 100));
                     }
                 } else {
                     putText(frame, "Cannot detect drill bit center", cv::Point(frame_width / 2 - 100, 100));
