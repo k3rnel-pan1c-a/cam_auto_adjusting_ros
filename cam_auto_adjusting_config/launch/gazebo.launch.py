@@ -83,8 +83,8 @@ def generate_launch_description():
 
 
     my_robot_commander_cpp = Node(
-        package = 'commander',
-        executable = 'commander'
+      package = 'commander',
+      executable = 'commander'
     )
 
 
