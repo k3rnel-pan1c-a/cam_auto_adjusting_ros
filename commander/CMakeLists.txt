@@ -25,9 +25,15 @@ set(YOLOS_CPP_DIR "/root/YOLOs-CPP")
 set(ONNXRUNTIME_DIR "${YOLOS_CPP_DIR}/onnxruntime-linux-x64-1.20.1")
 
 add_executable(commander src/commander.cpp)
+add_executable(model_test src/model_test.cpp)
 
 # Include directories for YOLOs-CPP and ONNX Runtime
 target_include_directories(commander PRIVATE
+  ${YOLOS_CPP_DIR}/include
+  ${ONNXRUNTIME_DIR}/include
+)
+
+target_include_directories(model_test PRIVATE
   ${YOLOS_CPP_DIR}/include
   ${ONNXRUNTIME_DIR}/include
 )
@@ -38,8 +44,18 @@ target_link_libraries(commander
   ${OpenCV_LIBS}
 )
 
+target_link_libraries(model_test
+  ${ONNXRUNTIME_DIR}/lib/libonnxruntime.so
+  ${OpenCV_LIBS}
+)
+
 # Set RPATH for runtime library discovery
 set_target_properties(commander PROPERTIES
+  BUILD_RPATH "${ONNXRUNTIME_DIR}/lib"
+  INSTALL_RPATH "${ONNXRUNTIME_DIR}/lib"
+)
+
+set_target_properties(model_test PROPERTIES
   BUILD_RPATH "${ONNXRUNTIME_DIR}/lib"
   INSTALL_RPATH "${ONNXRUNTIME_DIR}/lib"
 )
@@ -55,8 +71,16 @@ ament_target_dependencies(commander
   OpenCV
 )
 
+ament_target_dependencies(model_test 
+  rclcpp 
+  sensor_msgs
+  cv_bridge
+  OpenCV
+)
+
 install(TARGETS 
   commander
+  model_test
   DESTINATION lib/${PROJECT_NAME}/
 )
 
