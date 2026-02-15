@@ -22,7 +22,7 @@ find_package(OpenCV REQUIRED)
 
 # YOLOs-CPP and ONNX Runtime paths
 set(YOLOS_CPP_DIR "/root/YOLOs-CPP")
-set(ONNXRUNTIME_DIR "${YOLOS_CPP_DIR}/onnxruntime-linux-x64-1.20.1")
+set(ONNXRUNTIME_DIR "${YOLOS_CPP_DIR}/onnxruntime-linux-x64-gpu-1.20.1")
 
 add_executable(commander src/commander.cpp)
 
