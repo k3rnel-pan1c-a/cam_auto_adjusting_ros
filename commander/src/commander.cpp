@@ -2,7 +2,7 @@
 #include <opencv2/highgui.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <moveit/move_group_interface/move_group_interface.hpp>
+#include <moveit/move_group_interface/move_group_interface.h>
 #include <my_robot_interfaces/msg/pose_command.hpp>
 #include <my_robot_interfaces/srv/get_current_pose.hpp>
 #include <std_msgs/msg/string.hpp>
@@ -142,7 +142,7 @@ public:
 
             moveit_msgs::msg::RobotTrajectory trajectory;
             double fraction = arm_group_->computeCartesianPath(
-                waypoints, 0.01, trajectory);
+                waypoints, 0.01, 0, trajectory);
 
             if (fraction == 1.0) {
                 auto result = arm_group_->execute(trajectory);
@@ -191,10 +191,10 @@ private:
         std::string model_path = main_node_->declare_parameter<std::string>(
             "yolo_model_path", ament_index_cpp::get_package_share_directory("cam_auto_adjusting") + "/models" + "/yolo26m_cam_one.onnx");
         int num_classes = main_node_->declare_parameter<int>("yolo_num_classes", 7);
-        bool use_gpu = main_node_->declare_parameter<bool>("yolo_use_gpu", false);
+        bool use_gpu = main_node_->declare_parameter<bool>("yolo_use_gpu", true);
         
-        conf_threshold_ = main_node_->declare_parameter<double>("yolo_conf_threshold", 0.05);
-        iou_threshold_ = main_node_->declare_parameter<double>("yolo_iou_threshold", 0.05);
+        conf_threshold_ = main_node_->declare_parameter<double>("yolo_conf_threshold", 0.1);
+        iou_threshold_ = main_node_->declare_parameter<double>("yolo_iou_threshold", 0.1);
     
 
         std::string labels_path = "/tmp/yolo_labels.names";
